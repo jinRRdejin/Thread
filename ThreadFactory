@@ -1,0 +1,88 @@
+
+Java获取CPU数目 Runtime.getRuntime().availableProcessors()= cpu;
+  ThreadPoolExecutor tp = new ThreadPoolExecutor(cpu+1, CPU*2+1, keepAliveTime, TimeUnit.SECONDS,
+                workQueue, threadFactory("test",false));
+                自定义ThreadFactory对象，通过两个参数的Thread 传入名称等
+
+/**
+ * java ExecutorService 线程都需要被指定以何种形式运行，如果程序初始化ExecutorService时没有指定ThreadFactory，
+ * 程序会采用一个默认的ThreadFactory来生成提交线程，但是对于一个严谨对程序来说，定义自己的ThreadFactory永远是个最佳选择
+ *
+ * 1. 设置更有描述意义的线程名称
+ * 2. 设置线程是否是守护线程，默认的ThreadFactory总是提交非守护线程
+ * 3. 设置线程优先级，默认ThreadFactory总是提交的一般优先级线程
+ *
+ *  以下是以设计模式builder 创建了FactoryThread
+ */
+public class ThreadFactoryBuilder {
+
+    private String name;
+    private boolean daemon;
+    private int PROPERTY = Thread.NORM_PRIORITY;
+
+    public ThreadFactoryBuilder setName(String name){
+        if(name == null){
+            throw new NullPointerException();
+        }
+        this.name = name;
+        return this;
+    }
+
+    public ThreadFactoryBuilder setDaemon(boolean daemon){
+        this.daemon = daemon;
+        return this;
+    }
+
+    public ThreadFactoryBuilder setProperty(int property){
+        this.PROPERTY = property;
+        return this;
+    }
+    public ThreadFactory build(){
+        return build(this);
+    }
+
+    private static ThreadFactory build(ThreadFactoryBuilder builder){
+        final String name = builder.name;
+        final boolean daemon = builder.daemon;
+        final int priority = builder.PROPERTY;
+        final AtomicLong count = new AtomicLong(0);
+
+        return new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable runnable) {
+                Thread thread = new Thread(runnable);
+
+                    thread.setName(name + "-" + count.getAndIncrement());
+                    thread.setDaemon(daemon);
+                    thread.setPriority(priority);
+                return thread;
+            }
+        };
+       //lamb表达式实现
+      /*  return (Runnable runnable) -> {
+            Thread thread = new Thread(runnable);
+                thread.setName(name + "-" + count.getAndIncrement());
+                thread.setDaemon(daemon);
+
+                *//*
+                    thread.setPriority(priority);
+                *//*
+            return thread;
+        };
+*/
+    }
+    public static void main(String[] args){
+
+        ThreadFactory threadFactory = new ThreadFactoryBuilder().setName("Thread pool")
+                .setDaemon(false).setProperty(Thread.NORM_PRIORITY).build();
+        ExecutorService executorService = Executors.newFixedThreadPool(3,threadFactory);
+        //普通类实现Runnale接口
+        SimpleTask st = new SimpleTask();
+        SimpleTask st1 = new SimpleTask();
+        SimpleTask st2 = new SimpleTask();
+        executorService.execute(st);
+        executorService.execute(st1);
+        executorService.execute(st2);
+
+    }
+}
